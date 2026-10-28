@@ -1,7 +1,9 @@
-// 广州天气 & 心情记录 - 前端逻辑 (纯静态, 读取 data/ 下的 CSV)
-// data 目录下的 CSV 由 init_mood_files.py 预生成, 由 Python 脚本 / 页面保存更新
+// 广州天气 & 心情记录 - 前端逻辑 (纯静态, 只读 CSV, 不做任何写入)
+// 心情: data/mood_YYYY-MM-DD.csv      由 init_mood_files.py 预生成
+// 天气: weather/gz_weather_YYYY-MM-DD.csv  只读的逐小时数据, 文件不存在则该区块不展示
 
-const DATA_DIR = "data";
+const DATA_DIR = "data";        // 心情记录
+const WEATHER_DIR = "weather";  // 天气逐小时数据
 const DEFAULT_REPO = "huangyehui/HbHealth";
 const DEFAULT_BRANCH = "master";
 let moodRows = [];     // 当前日期的心情记录 [{datetime, mood, note}]
@@ -79,7 +81,7 @@ async function fetchCSV(path) {
 
 // --- 天气渲染 ---
 async function loadWeather(date) {
-  const rows = await fetchCSV(`${DATA_DIR}/gz_weather_${date}.csv`).catch(() => null);
+  const rows = await fetchCSV(`${WEATHER_DIR}/gz_weather_${date}.csv`).catch(() => null);
   if (!rows || !rows.length) { setVisible("weatherCard", false); return; }
   const cols = ["time", "temperature_2m", "relative_humidity_2m", "precipitation", "pressure_msl", "weather"];
   const labels = { time: "时间", temperature_2m: "气温℃", relative_humidity_2m: "湿度%", precipitation: "降水mm", pressure_msl: "气压hPa", weather: "天气" };

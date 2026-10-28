@@ -18,6 +18,10 @@ yarn-error.log*
 data/*
 !data/mood_*.csv
 
+# weather: 页面读取的逐小时天气入库; 实况日志等中间产物忽略
+weather/*
+!weather/gz_weather_*.csv
+
 # 编辑器 / 系统
 .vscode/
 .DS_Store
