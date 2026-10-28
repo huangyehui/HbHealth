@@ -12,8 +12,11 @@ node_modules/
 npm-debug.log*
 yarn-error.log*
 
-# 运行产物：天气 / 心情记录数据（脚本会自动重建该目录）
-data/
+# data: 页面读取的心情记录入库(便于在线托管读取), 其余本地抓取产物忽略
+# !data/ 用于抵消全局 ~/.gitignore_global 中忽略整个 data 目录的规则
+!data/
+data/*
+!data/mood_*.csv
 
 # 编辑器 / 系统
 .vscode/

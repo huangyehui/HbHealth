@@ -42,7 +42,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="weatherCard" hidden>
     <h2>天气(逐小时)</h2>
     <div id="weatherBox" class="muted">尚未加载</div>
   </div>
@@ -69,7 +69,7 @@
       <input type="text" id="moodNote" placeholder="备注(可选)" style="flex:1; min-width:160px;">
       <button id="addMoodBtn">添加</button>
     </div>
-    <div id="moodBox" class="muted">尚未加载</div>
+    <div id="moodBox" class="muted" hidden>尚未加载</div>
     <div class="row" style="margin-top:12px;">
       <button id="saveGhBtn">保存到 GitHub</button>
       <button class="ghost" id="exportBtn">导出 CSV</button>

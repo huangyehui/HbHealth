@@ -1,4 +1,5 @@
 // 广州天气 & 心情记录 - 前端逻辑 (纯静态, 读取 data/ 下的 CSV)
+// data 目录下的 CSV 由 init_mood_files.py 预生成, 由 Python 脚本 / 页面保存更新
 
 const DATA_DIR = "data";
 const DEFAULT_REPO = "huangyehui/HbHealth";
@@ -7,6 +8,24 @@ let moodRows = [];     // 当前日期的心情记录 [{datetime, mood, note}]
 let currentDate = "";
 
 const $ = (id) => document.getElementById(id);
+
+// --- 本地日期/时间 (按当前系统时间, 而非 UTC) ---
+const pad2 = (n) => String(n).padStart(2, "0");
+
+function todayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function nowLocalInput() {
+  const d = new Date();
+  return `${todayLocal()}T${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+}
+
+function setVisible(id, visible) {
+  const el = $(id);
+  if (el) el.hidden = !visible;
+}
 
 // --- CSV 解析 (支持逗号, 双引号转义) ---
 function parseCSV(text) {
@@ -50,24 +69,22 @@ function toCSV(rows, fields) {
   return "\uFEFF" + head + "\n" + body + "\n";
 }
 
+// 文件不存在返回 null, 由调用方决定是否展示
 async function fetchCSV(path) {
   const res = await fetch(path, { cache: "no-store" });
+  if (res.status === 404) return null;
   if (!res.ok) throw new Error(res.status);
   return parseCSV(await res.text());
 }
 
 // --- 天气渲染 ---
 async function loadWeather(date) {
-  const box = $("weatherBox");
-  try {
-    const rows = await fetchCSV(`${DATA_DIR}/gz_weather_${date}.csv`);
-    if (!rows.length) { box.textContent = "当天无数据"; return; }
-    const cols = ["time", "temperature_2m", "relative_humidity_2m", "precipitation", "pressure_msl", "weather"];
-    const labels = { time: "时间", temperature_2m: "气温℃", relative_humidity_2m: "湿度%", precipitation: "降水mm", pressure_msl: "气压hPa", weather: "天气" };
-    box.innerHTML = renderTable(rows, cols, labels);
-  } catch (e) {
-    box.innerHTML = `<span class="muted">未找到天气文件 gz_weather_${date}.csv</span>`;
-  }
+  const rows = await fetchCSV(`${DATA_DIR}/gz_weather_${date}.csv`).catch(() => null);
+  if (!rows || !rows.length) { setVisible("weatherCard", false); return; }
+  const cols = ["time", "temperature_2m", "relative_humidity_2m", "precipitation", "pressure_msl", "weather"];
+  const labels = { time: "时间", temperature_2m: "气温℃", relative_humidity_2m: "湿度%", precipitation: "降水mm", pressure_msl: "气压hPa", weather: "天气" };
+  $("weatherBox").innerHTML = renderTable(rows, cols, labels);
+  setVisible("weatherCard", true);
 }
 
 function renderTable(rows, cols, labels) {
@@ -78,11 +95,10 @@ function renderTable(rows, cols, labels) {
 
 // --- 心情渲染与编辑 ---
 async function loadMood(date) {
-  try {
-    moodRows = await fetchCSV(`${DATA_DIR}/mood_${date}.csv`);
-  } catch (e) {
-    moodRows = [];
-  }
+  // 文件不存在(null) 则不展示表格区, 录入表单仍保留
+  const rows = await fetchCSV(`${DATA_DIR}/mood_${date}.csv`).catch(() => null);
+  setVisible("moodBox", rows !== null);
+  moodRows = rows || [];
   renderMood();
 }
 
@@ -192,9 +208,8 @@ async function load() {
 }
 
 function init() {
-  const today = new Date().toISOString().slice(0, 10);
-  $("datePicker").value = today;
-  $("moodTime").value = new Date().toISOString().slice(0, 19);
+  $("datePicker").value = todayLocal();
+  $("moodTime").value = nowLocalInput();
   loadCfg();
   $("loadBtn").addEventListener("click", load);
   $("addMoodBtn").addEventListener("click", addMood);
