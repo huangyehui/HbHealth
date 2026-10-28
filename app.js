@@ -1,6 +1,8 @@
 // 广州天气 & 心情记录 - 前端逻辑 (纯静态, 读取 data/ 下的 CSV)
 
 const DATA_DIR = "data";
+const DEFAULT_REPO = "huangyehui/HbHealth";
+const DEFAULT_BRANCH = "master";
 let moodRows = [];     // 当前日期的心情记录 [{datetime, mood, note}]
 let currentDate = "";
 
@@ -112,14 +114,14 @@ function addMood() {
 
 // --- GitHub 配置 (存 localStorage) ---
 function loadCfg() {
-  $("ghRepo").value = localStorage.getItem("gh_repo") || "";
-  $("ghBranch").value = localStorage.getItem("gh_branch") || "main";
+  $("ghRepo").value = localStorage.getItem("gh_repo") || DEFAULT_REPO;
+  $("ghBranch").value = localStorage.getItem("gh_branch") || DEFAULT_BRANCH;
   $("ghToken").value = localStorage.getItem("gh_token") || "";
 }
 
 function saveCfg() {
   localStorage.setItem("gh_repo", $("ghRepo").value.trim());
-  localStorage.setItem("gh_branch", $("ghBranch").value.trim() || "main");
+  localStorage.setItem("gh_branch", $("ghBranch").value.trim() || DEFAULT_BRANCH);
   localStorage.setItem("gh_token", $("ghToken").value.trim());
   $("saveStatus").textContent = "配置已保存到本浏览器";
 }
@@ -133,8 +135,8 @@ function b64encode(str) {
 }
 
 async function saveToGitHub() {
-  const repo = $("ghRepo").value.trim();
-  const branch = $("ghBranch").value.trim() || "main";
+  const repo = $("ghRepo").value.trim() || DEFAULT_REPO;
+  const branch = $("ghBranch").value.trim() || DEFAULT_BRANCH;
   const token = $("ghToken").value.trim();
   if (!repo || !token) { alert("请先填写仓库 owner/repo 和 Token"); return; }
   if (!currentDate) { alert("请先选择日期"); return; }
