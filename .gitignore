@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# 运行产物：天气 / 心情记录数据（脚本会自动重建该目录）
+data/
+
+# 编辑器 / 系统
+.vscode/
+.DS_Store
+Thumbs.db

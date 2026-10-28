@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>慧宝宝心情日记</title>
+<style>
+  :root { --bg:#f6f8fa; --card:#fff; --line:#e1e4e8; --accent:#2563eb; --text:#24292f; --muted:#6b7280; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+         background:var(--bg); color:var(--text); }
+  header { background:var(--card); border-bottom:1px solid var(--line); padding:16px 20px; }
+  h1 { margin:0; font-size:20px; }
+  .wrap { max-width:960px; margin:0 auto; padding:20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:20px; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  label { color:var(--muted); font-size:13px; }
+  input, select, button, textarea { font:inherit; padding:8px 10px; border:1px solid var(--line);
+         border-radius:8px; background:#fff; }
+  button { background:var(--accent); color:#fff; border:none; cursor:pointer; }
+  button.ghost { background:#fff; color:var(--accent); border:1px solid var(--accent); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { padding:7px 8px; border-bottom:1px solid var(--line); text-align:left; }
+  th { color:var(--muted); font-weight:600; }
+  .muted { color:var(--muted); font-size:13px; }
+  .mood-tag { background:#eef2ff; color:var(--accent); padding:2px 8px; border-radius:20px; font-size:12px; }
+  .actions button { padding:4px 8px; font-size:12px; margin-right:4px; }
+  h2 { font-size:16px; margin:0 0 12px; }
+</style>
+</head>
+<body>
+<header><div class="wrap" style="padding:0;"><h1>广州天气 &amp; 心情记录</h1></div></header>
+<div class="wrap">
+
+  <div class="card">
+    <div class="row">
+      <label>日期</label>
+      <input type="date" id="datePicker">
+      <button id="loadBtn">加载</button>
+      <span class="muted" id="status"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>天气(逐小时)</h2>
+    <div id="weatherBox" class="muted">尚未加载</div>
+  </div>
+
+  <div class="card">
+    <h2>GitHub 保存设置</h2>
+    <div class="row">
+      <input type="text" id="ghRepo" placeholder="owner/repo" style="min-width:200px;">
+      <input type="text" id="ghBranch" placeholder="分支(默认 main)" style="width:140px;">
+      <input type="password" id="ghToken" placeholder="GitHub Token" style="flex:1; min-width:200px;">
+      <button class="ghost" id="saveCfgBtn">记住</button>
+    </div>
+    <div class="muted" style="margin-top:8px;">
+      Token 只存在本浏览器(localStorage),不会写进代码。建议用 fine-grained token,
+      权限仅限本仓库的 Contents 读写。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>心情记录</h2>
+    <div class="row" style="margin-bottom:12px;">
+      <input type="datetime-local" id="moodTime" step="1">
+      <input type="text" id="moodState" placeholder="心情状态,如 开心/平静/疲惫" style="flex:1; min-width:160px;">
+      <input type="text" id="moodNote" placeholder="备注(可选)" style="flex:1; min-width:160px;">
+      <button id="addMoodBtn">添加</button>
+    </div>
+    <div id="moodBox" class="muted">尚未加载</div>
+    <div class="row" style="margin-top:12px;">
+      <button id="saveGhBtn">保存到 GitHub</button>
+      <button class="ghost" id="exportBtn">导出 CSV</button>
+      <span class="muted" id="saveStatus"></span>
+    </div>
+  </div>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

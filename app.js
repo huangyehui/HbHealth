@@ -1,0 +1,205 @@
+// 广州天气 & 心情记录 - 前端逻辑 (纯静态, 读取 data/ 下的 CSV)
+
+const DATA_DIR = "data";
+let moodRows = [];     // 当前日期的心情记录 [{datetime, mood, note}]
+let currentDate = "";
+
+const $ = (id) => document.getElementById(id);
+
+// --- CSV 解析 (支持逗号, 双引号转义) ---
+function parseCSV(text) {
+  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter((l) => l.length);
+  if (!lines.length) return [];
+  const header = splitLine(lines[0]);
+  return lines.slice(1).map((line) => {
+    const cells = splitLine(line);
+    const obj = {};
+    header.forEach((h, i) => (obj[h] = cells[i] ?? ""));
+    return obj;
+  });
+}
+
+function splitLine(line) {
+  const out = [];
+  let cur = "", inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQ) {
+      if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (c === '"') inQ = false;
+      else cur += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ",") { out.push(cur); cur = ""; }
+      else cur += c;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+function toCSV(rows, fields) {
+  const esc = (v) => {
+    v = (v ?? "").toString();
+    return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  };
+  const head = fields.join(",");
+  const body = rows.map((r) => fields.map((f) => esc(r[f])).join(",")).join("\n");
+  return "\uFEFF" + head + "\n" + body + "\n";
+}
+
+async function fetchCSV(path) {
+  const res = await fetch(path, { cache: "no-store" });
+  if (!res.ok) throw new Error(res.status);
+  return parseCSV(await res.text());
+}
+
+// --- 天气渲染 ---
+async function loadWeather(date) {
+  const box = $("weatherBox");
+  try {
+    const rows = await fetchCSV(`${DATA_DIR}/gz_weather_${date}.csv`);
+    if (!rows.length) { box.textContent = "当天无数据"; return; }
+    const cols = ["time", "temperature_2m", "relative_humidity_2m", "precipitation", "pressure_msl", "weather"];
+    const labels = { time: "时间", temperature_2m: "气温℃", relative_humidity_2m: "湿度%", precipitation: "降水mm", pressure_msl: "气压hPa", weather: "天气" };
+    box.innerHTML = renderTable(rows, cols, labels);
+  } catch (e) {
+    box.innerHTML = `<span class="muted">未找到天气文件 gz_weather_${date}.csv</span>`;
+  }
+}
+
+function renderTable(rows, cols, labels) {
+  const head = cols.map((c) => `<th>${labels[c] || c}</th>`).join("");
+  const body = rows.map((r) => "<tr>" + cols.map((c) => `<td>${r[c] ?? ""}</td>`).join("") + "</tr>").join("");
+  return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+// --- 心情渲染与编辑 ---
+async function loadMood(date) {
+  try {
+    moodRows = await fetchCSV(`${DATA_DIR}/mood_${date}.csv`);
+  } catch (e) {
+    moodRows = [];
+  }
+  renderMood();
+}
+
+function renderMood() {
+  const box = $("moodBox");
+  if (!moodRows.length) { box.innerHTML = '<span class="muted">暂无记录,添加一条吧</span>'; return; }
+  const rowsHtml = moodRows.map((r, i) => `
+    <tr>
+      <td>${r.datetime || ""}</td>
+      <td><span class="mood-tag">${r.mood || ""}</span></td>
+      <td>${r.note || ""}</td>
+      <td class="actions"><button class="ghost" data-del="${i}">删除</button></td>
+    </tr>`).join("");
+  box.innerHTML = `<table><thead><tr><th>时间</th><th>心情</th><th>备注</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+  box.querySelectorAll("[data-del]").forEach((b) =>
+    b.addEventListener("click", () => { moodRows.splice(+b.dataset.del, 1); renderMood(); }));
+}
+
+function addMood() {
+  const t = $("moodTime").value;
+  const mood = $("moodState").value.trim();
+  if (!t || !mood) { alert("请填写时间和心情状态"); return; }
+  const datetime = t.replace("T", " ").padEnd(19, ":00").slice(0, 19);
+  moodRows.push({ datetime, mood, note: $("moodNote").value.trim() });
+  moodRows.sort((a, b) => a.datetime.localeCompare(b.datetime));
+  $("moodState").value = ""; $("moodNote").value = "";
+  renderMood();
+}
+
+// --- GitHub 配置 (存 localStorage) ---
+function loadCfg() {
+  $("ghRepo").value = localStorage.getItem("gh_repo") || "";
+  $("ghBranch").value = localStorage.getItem("gh_branch") || "main";
+  $("ghToken").value = localStorage.getItem("gh_token") || "";
+}
+
+function saveCfg() {
+  localStorage.setItem("gh_repo", $("ghRepo").value.trim());
+  localStorage.setItem("gh_branch", $("ghBranch").value.trim() || "main");
+  localStorage.setItem("gh_token", $("ghToken").value.trim());
+  $("saveStatus").textContent = "配置已保存到本浏览器";
+}
+
+// base64 编码 UTF-8 字符串
+function b64encode(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = "";
+  bytes.forEach((b) => (bin += String.fromCharCode(b)));
+  return btoa(bin);
+}
+
+async function saveToGitHub() {
+  const repo = $("ghRepo").value.trim();
+  const branch = $("ghBranch").value.trim() || "main";
+  const token = $("ghToken").value.trim();
+  if (!repo || !token) { alert("请先填写仓库 owner/repo 和 Token"); return; }
+  if (!currentDate) { alert("请先选择日期"); return; }
+
+  const path = `${DATA_DIR}/mood_${currentDate}.csv`;
+  const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+  const headers = { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" };
+  const status = $("saveStatus");
+  status.textContent = "保存中…";
+
+  try {
+    // 取已有文件的 sha (若存在)
+    let sha = undefined;
+    const getRes = await fetch(`${url}?ref=${branch}`, { headers, cache: "no-store" });
+    if (getRes.ok) sha = (await getRes.json()).sha;
+    else if (getRes.status !== 404) throw new Error(`读取失败 ${getRes.status}`);
+
+    const content = b64encode(toCSV(moodRows, ["datetime", "mood", "note"]));
+    const body = {
+      message: `update mood ${currentDate}`,
+      content,
+      branch,
+      ...(sha ? { sha } : {}),
+    };
+    const putRes = await fetch(url, { method: "PUT", headers, body: JSON.stringify(body) });
+    if (!putRes.ok) {
+      const err = await putRes.json().catch(() => ({}));
+      throw new Error(err.message || `提交失败 ${putRes.status}`);
+    }
+    status.textContent = `已保存到 ${repo} (${path})`;
+  } catch (e) {
+    status.textContent = "保存失败: " + e.message;
+  }
+}
+
+function exportMood() {
+  const csv = toCSV(moodRows, ["datetime", "mood", "note"]);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `mood_${currentDate}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// --- 初始化 ---
+async function load() {
+  currentDate = $("datePicker").value;
+  if (!currentDate) return;
+  $("status").textContent = "加载中…";
+  await Promise.all([loadWeather(currentDate), loadMood(currentDate)]);
+  $("status").textContent = "已加载 " + currentDate;
+}
+
+function init() {
+  const today = new Date().toISOString().slice(0, 10);
+  $("datePicker").value = today;
+  $("moodTime").value = new Date().toISOString().slice(0, 19);
+  loadCfg();
+  $("loadBtn").addEventListener("click", load);
+  $("addMoodBtn").addEventListener("click", addMood);
+  $("exportBtn").addEventListener("click", exportMood);
+  $("saveCfgBtn").addEventListener("click", saveCfg);
+  $("saveGhBtn").addEventListener("click", saveToGitHub);
+  load();
+}
+
+document.addEventListener("DOMContentLoaded", init);
